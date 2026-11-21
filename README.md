@@ -74,3 +74,7 @@ All the tuning values (the Max Warmth colour stops, how dark 100% gets, scroll s
 
 - `DisplayServices` is private. A future macOS update could break the backlight control; the colour filter would keep working.
 - Dimming via the gamma table (external displays) reduces contrast more than real backlight dimming does.
+
+## License
+
+[MIT](LICENSE). Dusk uses [Sparkle](https://sparkle-project.org) for updates, which has its own [license](https://github.com/sparkle-project/Sparkle/blob/2.x/LICENSE).
