@@ -3,6 +3,7 @@
 
 import AppKit
 import ServiceManagement
+import Sparkle
 
 // MARK: - Tuning
 
@@ -269,6 +270,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private let warmthSlider = NSSlider(value: 0, minValue: 0, maxValue: 100, target: nil, action: nil)
     private let toggleItem = NSMenuItem(title: "", action: #selector(toggle), keyEquivalent: "")
     private let loginItem = NSMenuItem(title: "Start at Login", action: #selector(toggleLogin), keyEquivalent: "")
+    /// Checks for new versions once a day and installs them (Sparkle), using the feed and key in Info.plist.
+    private lazy var updater = SPUStandardUpdaterController(startingUpdater: true, updaterDelegate: nil,
+                                                            userDriverDelegate: self)
+    private let updateItem = NSMenuItem(title: "Check for Updates…",
+                                        action: #selector(SPUStandardUpdaterController.checkForUpdates(_:)),
+                                        keyEquivalent: "")
     private var menuIsOpen = false
 
     func applicationDidFinishLaunching(_ notification: Notification) {
@@ -403,6 +410,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         menu.addItem(.separator())
         loginItem.target = self
         menu.addItem(loginItem)
+        updateItem.target = updater
+        menu.addItem(updateItem)
         menu.addItem(NSMenuItem(title: "Quit Dusk", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"))
         statusItem.menu = menu
     }
@@ -457,6 +466,28 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         } else {
             try? SMAppService.mainApp.register()
         }
+    }
+}
+
+// MARK: - Updates
+
+/// Dusk lives in the menu bar, so an update window opened in the background could go unnoticed. A scheduled check
+/// that finds an update shows it straight away only around launch; otherwise the menu item says an update is ready.
+extension AppDelegate: SPUStandardUserDriverDelegate {
+    var supportsGentleScheduledUpdateReminders: Bool { true }
+
+    func standardUserDriverShouldHandleShowingScheduledUpdate(_ update: SUAppcastItem,
+                                                              andInImmediateFocus immediateFocus: Bool) -> Bool {
+        immediateFocus
+    }
+
+    func standardUserDriverWillHandleShowingUpdate(_ handleShowingUpdate: Bool, forUpdate update: SUAppcastItem,
+                                                   state: SPUUserUpdateState) {
+        if !handleShowingUpdate { updateItem.title = "Update to \(update.displayVersionString)…" }
+    }
+
+    func standardUserDriverWillFinishUpdateSession() {
+        updateItem.title = "Check for Updates…"
     }
 }
 
