@@ -271,11 +271,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private let toggleItem = NSMenuItem(title: "", action: #selector(toggle), keyEquivalent: "")
     private let loginItem = NSMenuItem(title: "Start at Login", action: #selector(toggleLogin), keyEquivalent: "")
     /// Checks for new versions once a day and installs them (Sparkle), using the feed and key in Info.plist.
-    private lazy var updater = SPUStandardUpdaterController(startingUpdater: true, updaterDelegate: nil,
+    private lazy var updater = SPUStandardUpdaterController(startingUpdater: true, updaterDelegate: self,
                                                             userDriverDelegate: self)
     private let updateItem = NSMenuItem(title: "Check for Updates…",
                                         action: #selector(SPUStandardUpdaterController.checkForUpdates(_:)),
                                         keyEquivalent: "")
+    private let autoUpdateItem = NSMenuItem(title: "Install Updates Automatically",
+                                            action: #selector(toggleAutoUpdate), keyEquivalent: "")
+    /// Installs an update Sparkle has already downloaded in the background, relaunching Dusk.
+    private var pendingInstall: (() -> Void)?
     private var menuIsOpen = false
 
     func applicationDidFinishLaunching(_ notification: Notification) {
@@ -382,6 +386,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                                            accessibilityDescription: "Dusk")
         if showLabel, let icon = iconFrame { hud.show(percentText(t), under: icon) }
         if menuIsOpen { refreshMenu() } // so the open menu's slider moves along
+        installUpdateIfFilterInvisible()
     }
 
     /// The icon's frame in screen coordinates.
@@ -400,10 +405,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let menu = NSMenu()
         menu.delegate = self
         for header in [intensityHeader, warmthHeader] { header.isEnabled = false }
-        menu.addItem(intensityHeader)
-        menu.addItem(sliderItem(slider, action: #selector(sliderChanged)))
+        let quitItem = NSMenuItem(title: "Quit Dusk", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
+        let icons: [(NSMenuItem, String)] = [
+            (toggleItem, "power"), (intensityHeader, "sun.max"), (warmthHeader, "thermometer.sun"),
+            (loginItem, "arrow.up.forward.app"), (updateItem, "arrow.triangle.2.circlepath"),
+            (autoUpdateItem, "arrow.down.circle"), (quitItem, "xmark.circle"),
+        ]
+        for (item, symbol) in icons {
+            item.image = NSImage(systemSymbolName: symbol, accessibilityDescription: nil)
+        }
         toggleItem.target = self
         menu.addItem(toggleItem)
+        menu.addItem(.separator())
+        menu.addItem(intensityHeader)
+        menu.addItem(sliderItem(slider, action: #selector(sliderChanged)))
         menu.addItem(.separator())
         menu.addItem(warmthHeader)
         menu.addItem(sliderItem(warmthSlider, action: #selector(warmthChanged)))
@@ -412,16 +427,31 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         menu.addItem(loginItem)
         updateItem.target = updater
         menu.addItem(updateItem)
-        menu.addItem(NSMenuItem(title: "Quit Dusk", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"))
+        autoUpdateItem.target = self
+        menu.addItem(autoUpdateItem)
+        menu.addItem(quitItem)
         statusItem.menu = menu
     }
 
     private func sliderItem(_ slider: NSSlider, action: Selector) -> NSMenuItem {
-        let container = NSView(frame: NSRect(x: 0, y: 0, width: 220, height: 28))
-        slider.frame = NSRect(x: 18, y: 4, width: 184, height: 20)
+        // Size the row from the slider itself: the knob is taller than the track, and drawn a little
+        // larger still with Liquid Glass, so give it room above and below instead of a fixed height.
+        let sliderHeight = max(slider.intrinsicContentSize.height, slider.knobThickness) + 6
+        // The menu stretches the row to its full width. The slider keeps fixed margins so its track starts where the
+        // menu's text does (after the checkmark and icon columns, 50.5 pt in on macOS 27) and ends at the menu's right
+        // margin (about 18 pt in). The track itself sits 2.5 pt inside the slider's frame on each side.
+        let leading: CGFloat = 48, trailing: CGFloat = 15.5
+        let container = NSView(frame: NSRect(x: 0, y: 0, width: 160, height: sliderHeight + 8))
+        container.autoresizingMask = [.width]
+        slider.frame = NSRect(x: leading, y: 4, width: container.frame.width - leading - trailing, height: sliderHeight)
+        slider.autoresizingMask = [.width]
         slider.isContinuous = true
         slider.target = self
         slider.action = action
+        // Dusk's amber for the filled part of the track, rather than the system accent colour. (In a menu, macOS only
+        // fills the slider that has keyboard focus, which starts out as the first one: Intensity.)
+        if #available(macOS 26.0, *) { slider.tintProminence = .primary }
+        slider.trackFillColor = .systemOrange
         container.addSubview(slider)
         let item = NSMenuItem()
         item.view = container
@@ -439,6 +469,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     func menuWillOpen(_ menu: NSMenu) {
         menuIsOpen = true
         loginItem.state = SMAppService.mainApp.status == .enabled ? .on : .off
+        autoUpdateItem.state = updater.updater.automaticallyDownloadsUpdates ? .on : .off
         refreshMenu()
     }
 
@@ -458,6 +489,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     @objc private func toggle() {
         filter.apply(filter.intensity, on: !filter.isOn)
         intensityDidChange(showLabel: false)
+    }
+
+    @objc private func toggleAutoUpdate() {
+        updater.updater.automaticallyDownloadsUpdates.toggle()
     }
 
     @objc private func toggleLogin() {
@@ -488,6 +523,28 @@ extension AppDelegate: SPUStandardUserDriverDelegate {
 
     func standardUserDriverWillFinishUpdateSession() {
         updateItem.title = "Check for Updates…"
+    }
+}
+
+/// With Install Updates Automatically on, Sparkle downloads updates silently, and Dusk picks the moment to install.
+/// Installing relaunches Dusk, which briefly brings back normal colours and brightness, so it only happens while the
+/// filter is off or at 0% (and Sparkle installs it anyway whenever Dusk quits).
+extension AppDelegate: SPUUpdaterDelegate {
+    func updater(_ updater: SPUUpdater, willInstallUpdateOnQuit item: SUAppcastItem,
+                 immediateInstallationBlock immediateInstallHandler: @escaping () -> Void) -> Bool {
+        pendingInstall = immediateInstallHandler
+        installUpdateIfFilterInvisible()
+        return true
+    }
+
+    /// Installs a downloaded update if the filter isn't showing, after a pause so it doesn't land mid-scroll.
+    fileprivate func installUpdateIfFilterInvisible() {
+        guard pendingInstall != nil, !filter.isOn || filter.intensity == 0 else { return }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 10) { [weak self] in
+            guard let self, let install = self.pendingInstall, !self.filter.isOn || self.filter.intensity == 0 else { return }
+            self.pendingInstall = nil
+            install()
+        }
     }
 }
 

@@ -13,7 +13,7 @@ Scroll over the icon to warm and dim the screen.</p>
 
 Get the latest notarized build from [Releases](https://github.com/ahmadtawakol/Dusk/releases/latest), unzip it, and move **Dusk.app** to Applications. It runs on macOS 13 or later, on Apple silicon and Intel.
 
-Dusk keeps itself up to date: it checks for a new version once a day, and **Check for Updates…** in its menu checks right away.
+Dusk keeps itself up to date. It checks for a new version once a day and downloads it quietly in the background, then installs it the next time the filter is off or at 0% (or when Dusk quits), so the screen never flashes bright at night. Turn off **Install Updates Automatically** in the menu to be asked first instead; **Check for Updates…** checks right away.
 
 ## Features
 
@@ -25,14 +25,14 @@ Dusk keeps itself up to date: it checks for a new version once a day, and **Chec
 - **Puts things back.** Turn Off, Quit or `killall Dusk` restore your normal colours and brightness. Your normal brightness is saved to disk, so even a crash can't leave the screen stuck dim.
 - **Trackpad ticks** every 5% while scrolling, like the notches of a dial (Force Touch trackpads).
 - **Start at login**, toggled from the menu.
-- **Automatic updates**, signed and checked before they're installed.
+- **Silent automatic updates**, signed and checked before they're installed, timed so they never interrupt the filter.
 
 ## Using it
 
 | Action | What it does |
 | --- | --- |
 | Scroll up / down over the icon | Intensity up / down: 5% per mouse-wheel notch, smooth on a trackpad. Follows the direction your fingers or wheel move, whatever your natural-scrolling setting. |
-| Click the icon | Opens the menu: Intensity slider, Turn Off / Turn On, Max Warmth slider, Start at Login, Check for Updates, Quit. |
+| Click the icon | Opens the menu: Turn Off / Turn On, Intensity slider, Max Warmth slider, Start at Login, Check for Updates, Install Updates Automatically, Quit. |
 | Brightness keys | Move the intensity along with the brightness while Dusk is on. |
 
 The icon is filled while Dusk is on (including at 0%) and outlined when it's turned off.
