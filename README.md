@@ -29,6 +29,8 @@ Dusk keeps itself up to date. It checks for a new version once a day and downloa
 
 ## Using it
 
+<p align="center"><img src="docs/menu.png" width="346" alt="Dusk's sun icon in the macOS menu bar with its menu open: Turn Off, the Intensity and Max Warmth sliders, Start at Login, Check for Updates, Install Updates Automatically and Quit Dusk"></p>
+
 | Action | What it does |
 | --- | --- |
 | Scroll up / down over the icon | Intensity up / down: 5% per mouse-wheel notch, smooth on a trackpad. Follows the direction your fingers or wheel move, whatever your natural-scrolling setting. |
