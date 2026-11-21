@@ -60,18 +60,6 @@ To redraw the app icon after editing [Tools/make-icon.swift](Tools/make-icon.swi
 swift Tools/make-icon.swift Resources/AppIcon.icns
 ```
 
-## Releasing
-
-Bump `CFBundleShortVersionString` and `CFBundleVersion` in [Info.plist](Info.plist), commit, then:
-
-```bash
-./release.sh
-```
-
-It builds with your Developer ID, notarizes and staples the app, signs the update with Dusk's Sparkle key, tags the version and publishes a GitHub release with `Dusk-<version>.zip` and `appcast.xml`. Installed copies find the new version through `releases/latest/download/appcast.xml`.
-
-It needs a **Developer ID Application** certificate in the keychain, the [`asc`](https://asccli.sh) CLI signed in to App Store Connect (for notarization), `gh` signed in to GitHub, and Dusk's Sparkle private key in the login keychain (created with `generate_keys --account Dusk`). Back that key up (`generate_keys --account Dusk -x <file>`): without it, installed copies can't be updated.
-
 ## How it works
 
 - **Colour** is applied through each display's gamma table (`CGSetDisplayTransferByTable`), scaling the display's own calibrated table. That keeps colour calibration intact, filters the cursor too, and doesn't show up in screenshots or screen sharing. macOS restores the original tables by itself when Dusk exits, even if it crashes, and Dusk re-applies its tables if macOS resets them (after sleep or a display change).

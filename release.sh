@@ -4,6 +4,8 @@
 # Before running: bump CFBundleShortVersionString and CFBundleVersion in Info.plist and commit.
 # Needs: a "Developer ID Application" certificate in the keychain, the asc CLI signed in (notarization),
 # Dusk's Sparkle key in the login keychain (generate_keys --account Dusk), and gh signed in.
+# Keep a backup of that Sparkle key (generate_keys --account Dusk -x <file>; restore with -f <file>):
+# without it, installed copies can never be updated again.
 set -euo pipefail
 cd "$(dirname "$0")"
 
