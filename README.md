@@ -7,8 +7,7 @@
 <p align="center">A menu bar screen filter for working comfortably on a Mac at night.<br>
 Scroll over the icon to warm and dim the screen.</p>
 
-<!-- Hero image: save it as docs/hero.png, then uncomment the next line. -->
-<!-- <p align="center"><img src="docs/hero.png" alt="A MacBook glowing warm amber on a desk at dusk"></p> -->
+<p align="center"><img src="docs/hero.webp" alt="Someone in headphones coding late at night in a dark room, the laptop's code glowing warm amber, rain on the window"></p>
 
 ## Download
 
